@@ -44,6 +44,15 @@ th{color:var(--mu);font-weight:500}
 .inp{background:#11141a;border:1px solid var(--line);border-radius:12px;color:var(--tx);font:inherit;padding:11px;width:100%}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .bar{height:8px;border-radius:9px;background:#262b36;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--ac)}
+.tech{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.tech summary{color:var(--ac);font-weight:600;font-size:15px;list-style:none;padding:6px 0}
+.tech summary::-webkit-details-marker{display:none}
+.tech summary:after{content:" ›"}.tech[open] summary:after{content:" ⌄"}
+.ph{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.ph figure{margin:0;background:#000;border-radius:12px;overflow:hidden}
+.ph img{display:block;width:100%;aspect-ratio:3/2;object-fit:contain;background:#000}
+.ph figcaption{font-size:11px;color:var(--mu);text-align:center;padding:4px;background:var(--card)}
+.tech ol{margin:10px 0 0;padding-left:20px;font-size:14px}.tech li{margin:4px 0}
 </style>
 </head>
 <body>
@@ -73,6 +82,22 @@ B:[
 {id:"swing",n:"Wymachy kettlebellem (swing)",lo:15,hi:20,s:3,main:1,eq:"kettlebell 16 kg",up:"wymachy jednorącz"},
 {id:"curl",n:"Uginanie ramion z hantlami",lo:8,hi:15,s:2,eq:"2 x 15 kg",up:"opuszczanie przez 3 s"},
 {id:"tri",n:"Prostowanie ramion z hantlem zza głowy",lo:8,hi:15,s:2,eq:"15 kg",up:"opuszczanie przez 3 s"}]};
+const TECH={
+goblet:["Trzymaj kettlebell za boki uchwytu blisko klatki.","Zejdź w przysiad między nogi, aż tył ud dotknie łydek.","Klatka i głowa w górze, plecy proste.","Na dole pauza; łokciami rozepchnij kolana na zewnątrz.","Wróć do pozycji wyjściowej."],
+floor:["Połóż się na podłodze, kolana mogą być ugięte; zacznij z hantlami na wyprostowanych rękach nad sobą.","Opuszczaj hantle, aż ramiona dotkną podłogi.","Łokcie bliżej tułowia mocniej angażują triceps, szerzej: klatkę.","Pauza na dole, potem wyprostuj łokcie i zbliż hantle u góry."],
+row1:["Pochyl tułów prawie równolegle do podłogi, wolną rękę oprzyj; dolna część pleców prosta.","Dłoń z hantlem zwrócona do tułowia.","Ciągnij hantel prosto w górę do boku klatki, ramię blisko boku, z wydechem.","Tułów nieruchomo; pracują plecy, nie ręka. U góry ściśnij mięśnie pleców."],
+rdl:["Hantle przy bokach, stopy na szerokość barków albo węziej, kolana lekko ugięte.","Kolana zostają nieruchomo; pochylaj się w biodrach z prostymi plecami, hantle nad stopami.","Schodź, aż poczujesz rozciąganie tyłu ud.","Wróć do pionu, prostując biodra."],
+ohp:["Stopy na szerokość barków, hantle na wysokości głowy, łokcie na boki, zgięte około 90 stopni.","Bez pomagania nogami i bez odchylania się wyprostuj łokcie; hantle razem nad głową.","Pauza u góry i powolny powrót."],
+plank:["Oprzyj się na palcach stóp i przedramionach; łokcie pod barkami.","Ciało przez cały czas w prostej linii."],
+split:["Tylna stopa oparta wyżej, przednia wysunięta; hantle wiszą po bokach.","Opuszczaj się, uginając kolano i biodro; tułów wyprostowany.","Przednie kolano w jednej linii ze stopą.","Z dołu wypchnij się przez piętę do pozycji wyjściowej."],
+pushup:["Dłonie na podłodze, ciało uniesione na wyprostowanych rękach (baza podaje rozstaw dłoni około 91 cm).","Z wdechem opuszczaj się, aż klatka prawie dotknie podłogi.","Z wydechem wypchnij się w górę; krótka pauza u góry."],
+row2:["Hantle w dłoniach zwróconych do tułowia, kolana lekko ugięte.","Pochyl tułów w biodrach z prostymi plecami prawie do poziomu; głowa uniesiona, hantle wiszą pod barkami.","Tułów nieruchomo; z wydechem unieś hantle do boków, łokcie blisko ciała.","U góry ściśnij plecy na sekundę, powoli opuść z wdechem."],
+swing:["Kettlebell porusza się od tuż poniżej krocza do wysokości między górą brzucha a barkami.","Ręce proste albo lekko ugięte.","Napęd daje mocne pchnięcie bioder, bez mocnego uginania kolan.","Ciężar wysyłasz do przodu; nie wstajesz z przysiadu i nie podnosisz go rękami."],
+curl:["Stań prosto, hantle w opuszczonych rękach, łokcie blisko tułowia, dłonie zwrócone do przodu.","Ramiona nieruchomo; z wydechem uginaj ręce, aż hantle będą na wysokości barków.","Krótka pauza u góry, powoli opuść z wdechem."],
+tri:["Stań ze stopami na szerokość barków; jeden hantel trzymany oburącz nad głową na wyprostowanych rękach.","Ramiona blisko głowy, łokcie do środka.","Z wdechem opuszczaj hantel łukiem za głowę, aż przedramiona dotkną bicepsów; ruszają się tylko przedramiona.","Z wydechem wyprostuj ręce."]};
+const TNOTE={row1:"Zdjęcia pokazują podparcie na ławce; w domu oprzyj rękę i kolano o krzesło albo kanapę.",split:"Zdjęcia pokazują tylną stopę na ławce; w domu użyj krzesła albo kanapy. Wykroki: ta sama praca nogi bez podparcia.",swing:"Zdjęcia pokazują wersję jednorącz; w planie trzymasz kettlebell oburącz.",plank:"Pierwsze zdjęcie to przygotowanie, drugie to pozycja docelowa."};
+const TSRC={swing:"Opis: Wikipedia, hasło Kettlebell. Zdjęcia: free-exercise-db."};
+function tech(id){return `<details class="tech"><summary>Jak wykonać</summary><div class="ph"><figure><img loading="lazy" src="img/${id}_0.jpg" alt="początek"><figcaption>początek</figcaption></figure><figure><img loading="lazy" src="img/${id}_1.jpg" alt="koniec"><figcaption>koniec ruchu</figcaption></figure></div><ol>${TECH[id].map(x=>`<li>${esc(x)}</li>`).join("")}</ol>${TNOTE[id]?`<div class="hint">${esc(TNOTE[id])}</div>`:""}<div class="mu" style="font-size:12px;margin-top:6px">${esc(TSRC[id]||"Opis i zdjęcia: free-exercise-db (domena publiczna).")}</div></details>`}
 const PROTEIN=131, REST=90, KEY="trening_v1";
 let S=load(), view="today", T=null;
 function load(){try{return Object.assign({sessions:[],body:[],protein:{},cur:null,start:null},JSON.parse(localStorage.getItem(KEY)||"{}"))}catch(e){return {sessions:[],body:[],protein:{},cur:null,start:null}}}
@@ -109,7 +134,7 @@ function vToday(){
  PLAN[t].map(e=>{const n=setsFor(e),l=last(e.id),c=S.cur.ex[e.id]||[];const lv=l?l.filter(x=>x>0):[];const top=lv.length>=2&&lv.every(x=>x>=e.hi);
   let h=`<div class="card"><div class="row sp"><h2>${esc(e.n)}</h2>${top?'<span class="tag up">trudniej</span>':""}</div><div class="mu">${esc(e.eq)} · cel ${e.lo}-${e.hi}${e.unit?" "+e.unit:" powt."}</div><div class="sets">`;
   for(let i=0;i<n;i++)h+=`<div class="set ${c[i]>0?"done":""}" id="s_${e.id}_${i}"><small>seria ${i+1}${l&&l[i]?" · ost. "+l[i]:""}</small><input type="number" inputmode="numeric" placeholder="${l&&l[i]?l[i]:e.lo}" value="${c[i]>0?c[i]:""}" onchange="setRep('${e.id}',${i},this.value)"></div>`;
-  h+=`</div>${top?`<div class="hint">Ostatnio górna granica we wszystkich seriach. Wariant trudniejszy: ${esc(e.up)}.</div>`:""}</div>`;return h}).join("")+
+  h+=`</div>${top?`<div class="hint">Ostatnio górna granica we wszystkich seriach. Wariant trudniejszy: ${esc(e.up)}.</div>`:""}${tech(e.id)}</div>`;return h}).join("")+
  `<button class="pri" onclick="finish()">Zakończ trening</button>`}
 function vBody(){const b=S.body.slice().reverse();
  return `<h1>Pomiary</h1><div class="mu">Raz w tygodniu, rano na czczo. Pas na wysokości pępka.</div>
@@ -133,7 +158,7 @@ function vPlan(){return `<h1>Plan</h1><div class="mu">Rekompozycja, plan z 18.11
  <p>Górna granica powtórzeń we wszystkich seriach: następnym razem trudniejszy wariant (aplikacja pokaże znacznik „trudniej”).</p>
  <p>Tygodnie 1-2: po 2 serie. Od 5. tygodnia: 4 serie w czterech głównych ćwiczeniach.</p>
  <p>Białko co najmniej ${PROTEIN} g dziennie. Deficyt najwyżej 500 kcal. Kreatyna 5 g.</p></div></div>
- ${["A","B"].map(t=>`<div class="card"><h2>Trening ${t}</h2>${PLAN[t].map(e=>`<div style="padding:7px 0;border-bottom:1px solid var(--line)">${esc(e.n)}<div class="mu">${e.s} x ${e.lo}-${e.hi}${e.unit||""} · ${esc(e.eq)}<br>Trudniej: ${esc(e.up)}</div></div>`).join("")}</div>`).join("")}`}
+ ${["A","B"].map(t=>`<div class="card"><h2>Trening ${t}</h2>${PLAN[t].map(e=>`<div style="padding:7px 0;border-bottom:1px solid var(--line)">${esc(e.n)}<div class="mu">${e.s} x ${e.lo}-${e.hi}${e.unit||""} · ${esc(e.eq)}<br>Trudniej: ${esc(e.up)}</div>${tech(e.id)}</div>`).join("")}</div>`).join("")}`}
 function render(){$("#app").innerHTML=({today:vToday,body:vBody,hist:vHist,plan:vPlan})[view]();document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===view))}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{view=b.dataset.v;render();window.scrollTo(0,0)});
 if("serviceWorker" in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});

@@ -41,6 +41,7 @@ nav button.on{color:var(--ac);font-weight:700}
 #timer{position:fixed;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom) + 70px);background:#1f2a24;border:1px solid var(--ac);border-radius:16px;padding:10px 14px;display:none}
 #timer b{font:700 28px ui-monospace,Menlo,monospace}
 #timer.end{background:#3a2f10;border-color:var(--ac2)}
+#timer.hold{background:#10283a;border-color:#4aa3ff}
 table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
 th{color:var(--mu);font-weight:500}
 .inp{background:#11141a;border:1px solid var(--line);border-radius:12px;color:var(--tx);font:inherit;padding:11px;width:100%}
@@ -59,7 +60,7 @@ th{color:var(--mu);font-weight:500}
 </head>
 <body>
 <div id="app"></div>
-<div id="timer"><div class="row sp"><div><div class="mu" id="tlabel">Przerwa</div><b id="tclock">1:30</b></div><div class="row"><button onclick="addT(30)">+30 s</button><button onclick="stopT()">Stop</button></div></div></div>
+<div id="timer"><div class="row sp"><div><div class="mu" id="tlabel">Przerwa</div><b id="tclock">1:30</b></div><div class="row"><button id="tadd" onclick="addT(30)">+30 s</button><button onclick="stopT()">Stop</button></div></div></div>
 <nav>
 <button data-v="today" class="on">Trening</button>
 <button data-v="body">Pomiary</button>
@@ -114,18 +115,27 @@ function begin(type){S.cur={date:today(),type:type,ex:{},adj:{},t0:Date.now()};i
 function exById(id){return PLAN.A.concat(PLAN.B).find(e=>e.id===id)}
 function target(e,i){const l=last(e.id);let b;if(!l)b=e.lo;else{const v=l[i]>0?l[i]:l.filter(x=>x>0).slice(-1)[0];b=Math.min(e.hi,v+(e.unit?5:1))}
  const a=(S.cur&&S.cur.adj&&S.cur.adj[e.id])||0;return Math.max(1,b+a)}
-function tapSet(id,i){const e=exById(id);S.cur.ex[id]=S.cur.ex[id]||[];const was=S.cur.ex[id][i]>0;S.cur.ex[id][i]=was?0:target(e,i);save();if(!was)startT(REST);render()}
+function tapSet(id,i){const e=exById(id);S.cur.ex[id]=S.cur.ex[id]||[];const was=S.cur.ex[id][i]>0;if(e.unit&&!was){unlockAudio();startHold(id,i,target(e,i));return}S.cur.ex[id][i]=was?0:target(e,i);save();if(!was){unlockAudio();startT(REST)}render()}
+function unlockAudio(){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume()}catch(e){}}
 function adj(id,d){const e=exById(id);S.cur.adj=S.cur.adj||{};S.cur.adj[id]=(S.cur.adj[id]||0)+d*(e.unit?5:1);save();render()}
 function finish(){const any=Object.values(S.cur.ex).some(a=>a.some(x=>x>0));if(!any){if(!confirm("Brak zaliczonych serii. Anulować trening?"))return;S.cur=null;save();stopT();render();return}
  const min=Math.max(1,Math.round((Date.now()-(S.cur.t0||Date.now()))/60000));S.cur.min=min;delete S.cur.adj;S.sessions.push(S.cur);S.cur=null;save();stopT();render();
  if(S.health)location.href="shortcuts://run-shortcut?name="+encodeURIComponent(S.hname||"Trening Log")+"&input=text&text="+min}
 function setHealth(on){S.health=on;save();render()}
-function startT(sec){stopT();T={end:Date.now()+sec*1000};$("#timer").style.display="block";$("#timer").classList.remove("end");tick();T.iv=setInterval(tick,250)}
-function addT(s){if(T){T.end=Math.max(T.end,Date.now())+s*1000;$("#timer").classList.remove("end");T.beeped=false}}
+function startT(sec){stopT();T={mode:"rest",end:Date.now()+sec*1000};showT()}
+function startHold(id,i,sec){stopT();T={mode:"prep",end:Date.now()+5000,id:id,i:i,sec:sec};showT()}
+let WL=null;function wake(){try{if(navigator.wakeLock&&!WL)navigator.wakeLock.request("screen").then(l=>{WL=l;l.addEventListener("release",()=>{WL=null})}).catch(()=>{})}catch(e){}}
+function showT(){wake();$("#timer").style.display="block";$("#timer").className="";$("#tadd").style.display=T.mode==="rest"?"":"none";tick();T.iv=setInterval(tick,200)}
+function addT(s){if(T&&T.mode==="rest"){T.end=Math.max(T.end,Date.now())+s*1000;$("#timer").classList.remove("end");T.beeped=false}}
 function stopT(){if(T&&T.iv)clearInterval(T.iv);T=null;$("#timer").style.display="none"}
-function tick(){if(!T)return;let r=Math.ceil((T.end-Date.now())/1000);if(r<=0){$("#tclock").textContent="0:00";$("#tlabel").textContent="Koniec przerwy, następna seria";$("#timer").classList.add("end");if(!T.beeped){T.beeped=true;beep();if(navigator.vibrate)navigator.vibrate([200,100,200])}if(r<-60)stopT();return}
-$("#tlabel").textContent="Przerwa";$("#tclock").textContent=Math.floor(r/60)+":"+String(r%60).padStart(2,"0")}
-let AC=null;function beep(){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=880;o.connect(g);g.connect(AC.destination);g.gain.setValueAtTime(.25,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+.6);o.start();o.stop(AC.currentTime+.6)}catch(e){}}
+function fmt(r){return Math.floor(r/60)+":"+String(r%60).padStart(2,"0")}
+function tick(){if(!T)return;let r=Math.ceil((T.end-Date.now())/1000);
+ if(T.mode==="prep"){if(r<=0){beep(880);T.mode="hold";T.end=Date.now()+T.sec*1000;$("#timer").className="hold";r=T.sec}else{$("#tlabel").textContent="Przygotuj się";$("#tclock").textContent=fmt(r);return}}
+ if(T.mode==="hold"){if(r<=0){const id=T.id,i=T.i,sec=T.sec;beep(1320);setTimeout(()=>beep(1320),350);if(navigator.vibrate)navigator.vibrate([300,100,300]);if(S.cur){S.cur.ex[id]=S.cur.ex[id]||[];S.cur.ex[id][i]=sec;save()}startT(REST);render();return}
+  $("#tlabel").textContent="Trzymaj, koniec za";$("#tclock").textContent=fmt(r);return}
+ if(r<=0){$("#tclock").textContent="0:00";$("#tlabel").textContent="Koniec przerwy, następna seria";$("#timer").classList.add("end");if(!T.beeped){T.beeped=true;beep(880);if(navigator.vibrate)navigator.vibrate([200,100,200])}if(r<-60)stopT();return}
+ $("#tlabel").textContent="Przerwa";$("#tclock").textContent=fmt(r)}
+let AC=null;function beep(f){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f||880;o.connect(g);g.connect(AC.destination);g.gain.setValueAtTime(.25,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+.6);o.start();o.stop(AC.currentTime+.6)}catch(e){}}
 function vToday(){
  const w=week();
  if(!S.cur){const t=nextType();const l=S.sessions[S.sessions.length-1];
@@ -141,7 +151,7 @@ function vToday(){
  return `<div class="row sp"><h1>Trening ${t}</h1><span class="tag">tydzień ${w}</span></div><div class="mu">Po serii stuknij jej pole: zalicza się z pokazaną liczbą i rusza przerwa ${REST} s. Drugie stuknięcie cofa.</div>`+
  PLAN[t].map(e=>{const n=setsFor(e),l=last(e.id),c=S.cur.ex[e.id]||[];const lv=l?l.filter(x=>x>0):[];const top=lv.length>=2&&lv.every(x=>x>=e.hi);
   let h=`<div class="card"><div class="row sp"><h2>${esc(e.n)}</h2>${top?'<span class="tag up">trudniej</span>':""}</div><div class="mu">${esc(e.eq)} · cel ${e.lo}-${e.hi}${e.unit?" "+e.unit:" powt."}</div><div class="sets">`;
-  for(let i=0;i<n;i++){const dn=c[i]>0;h+=`<button class="set ${dn?"done":""}" onclick="tapSet('${e.id}',${i})"><small>seria ${i+1}${l&&l[i]?" · ost. "+l[i]:""}</small><b>${dn?c[i]:target(e,i)}</b><small>${dn?"zrobione":"stuknij"}</small></button>`}
+  for(let i=0;i<n;i++){const dn=c[i]>0;h+=`<button class="set ${dn?"done":""}" onclick="tapSet('${e.id}',${i})"><small>seria ${i+1}${l&&l[i]?" · ost. "+l[i]:""}</small><b>${dn?c[i]:target(e,i)}${e.unit?" s":""}</b><small>${dn?"zrobione":e.unit?"start":"stuknij"}</small></button>`}
   h+=`</div><div class="row sp" style="margin-top:8px"><span class="mu">Inna liczba${e.unit?" sekund":" powtórzeń"} dziś?</span><span class="row"><button class="sm" onclick="adj('${e.id}',-1)">−</button><button class="sm" onclick="adj('${e.id}',1)">+</button></span></div><div>`;
   h+=`</div>${top?`<div class="hint">Ostatnio górna granica we wszystkich seriach. Wariant trudniejszy: ${esc(e.up)}.</div>`:""}${tech(e.id)}</div>`;return h}).join("")+
  `<button class="pri" onclick="finish()">Zakończ trening</button>`}

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trening">
+<meta name="theme-color" content="#0f1115">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Trening</title>
+<style>
+:root{--bg:#0f1115;--card:#191c23;--line:#2a2f3a;--tx:#f2f4f8;--mu:#9aa3b2;--ac:#35c98a;--ac2:#f0b429;--bad:#ef6b6b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.35 -apple-system,system-ui,sans-serif}
+body{padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 84px)}
+h1{font-size:26px;margin:4px 0 2px}h2{font-size:17px;margin:0}
+.mu{color:var(--mu);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0}
+.row{display:flex;align-items:center;gap:10px}.sp{justify-content:space-between}
+button{font:inherit;color:var(--tx);background:#262b36;border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-height:46px}
+button.pri{background:var(--ac);border-color:var(--ac);color:#06281a;font-weight:700;width:100%}
+button.ghost{background:transparent}
+button:active{opacity:.7}
+.sets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.set{background:#11141a;border:1px solid var(--line);border-radius:12px;padding:6px 4px;text-align:center}
+.set small{display:block;color:var(--mu);font-size:11px}
+.set input{width:100%;background:transparent;border:0;color:var(--tx);font:700 22px -apple-system,system-ui,sans-serif;text-align:center;padding:4px 0;outline:0;-moz-appearance:textfield}
+.set input::placeholder{color:#4a5160;font-weight:500}
+.set input::-webkit-outer-spin-button,.set input::-webkit-inner-spin-button{-webkit-appearance:none}
+.set.done{border-color:var(--ac)}
+.tag{font-size:12px;padding:3px 8px;border-radius:999px;background:#262b36;color:var(--mu)}
+.tag.up{background:#3a2f10;color:var(--ac2)}
+.hint{font-size:13px;color:var(--ac2);margin-top:8px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#12151bee;backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:6px 8px calc(env(safe-area-inset-bottom) + 6px)}
+nav button{flex:1;border:0;background:transparent;color:var(--mu);font-size:13px;min-height:50px}
+nav button.on{color:var(--ac);font-weight:700}
+#timer{position:fixed;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom) + 70px);background:#1f2a24;border:1px solid var(--ac);border-radius:16px;padding:10px 14px;display:none}
+#timer b{font:700 28px ui-monospace,Menlo,monospace}
+#timer.end{background:#3a2f10;border-color:var(--ac2)}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--mu);font-weight:500}
+.inp{background:#11141a;border:1px solid var(--line);border-radius:12px;color:var(--tx);font:inherit;padding:11px;width:100%}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bar{height:8px;border-radius:9px;background:#262b36;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--ac)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="timer"><div class="row sp"><div><div class="mu" id="tlabel">Przerwa</div><b id="tclock">1:30</b></div><div class="row"><button onclick="addT(30)">+30 s</button><button onclick="stopT()">Stop</button></div></div></div>
+<nav>
+<button data-v="today" class="on">Trening</button>
+<button data-v="body">Pomiary</button>
+<button data-v="hist">Historia</button>
+<button data-v="plan">Plan</button>
+</nav>
+<script>
+"use strict";
+// Plan: health/body_composition/RECOMPOSITION.md (2026-11-18). Kettlebell 16 kg, dwa hantle po 15 kg.
+const PLAN={
+A:[
+{id:"goblet",n:"Przysiad z kettlebellem przy klatce (goblet)",lo:10,hi:20,s:3,main:1,eq:"kettlebell 16 kg",up:"przysiad bułgarski z hantlami albo opuszczanie przez 3 s"},
+{id:"floor",n:"Wyciskanie hantli leżąc na podłodze",lo:8,hi:20,s:3,main:1,eq:"2 x 15 kg",up:"opuszczanie przez 3 s i pauza na dole"},
+{id:"row1",n:"Wiosłowanie hantlem jednorącz w opadzie",lo:8,hi:20,s:3,main:1,eq:"15 kg, na rękę",up:"opuszczanie przez 3 s i pauza u góry"},
+{id:"rdl",n:"Martwy ciąg rumuński z dwoma hantlami",lo:10,hi:20,s:3,main:1,eq:"2 x 15 kg",up:"martwy ciąg na jednej nodze"},
+{id:"ohp",n:"Wyciskanie hantli nad głowę stojąc",lo:8,hi:15,s:2,eq:"2 x 15 kg",up:"opuszczanie przez 3 s"},
+{id:"plank",n:"Deska (plank)",lo:30,hi:60,s:2,unit:"s",eq:"bez sprzętu",up:"deska z nogami wyżej"}],
+B:[
+{id:"split",n:"Przysiad bułgarski albo wykroki z hantlami",lo:8,hi:15,s:3,main:1,eq:"2 x 15 kg, na nogę",up:"opuszczanie przez 3 s i pauza na dole"},
+{id:"pushup",n:"Pompki",lo:8,hi:20,s:3,main:1,eq:"bez sprzętu",up:"pompki z nogami wyżej"},
+{id:"row2",n:"Wiosłowanie dwoma hantlami w opadzie",lo:8,hi:20,s:3,main:1,eq:"2 x 15 kg",up:"opuszczanie przez 3 s i pauza u góry"},
+{id:"swing",n:"Wymachy kettlebellem (swing)",lo:15,hi:20,s:3,main:1,eq:"kettlebell 16 kg",up:"wymachy jednorącz"},
+{id:"curl",n:"Uginanie ramion z hantlami",lo:8,hi:15,s:2,eq:"2 x 15 kg",up:"opuszczanie przez 3 s"},
+{id:"tri",n:"Prostowanie ramion z hantlem zza głowy",lo:8,hi:15,s:2,eq:"15 kg",up:"opuszczanie przez 3 s"}]};
+const PROTEIN=131, REST=90, KEY="trening_v1";
+let S=load(), view="today", T=null;
+function load(){try{return Object.assign({sessions:[],body:[],protein:{},cur:null,start:null},JSON.parse(localStorage.getItem(KEY)||"{}"))}catch(e){return {sessions:[],body:[],protein:{},cur:null,start:null}}}
+function save(){localStorage.setItem(KEY,JSON.stringify(S))}
+const $=q=>document.querySelector(q), esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+function nextType(){const l=S.sessions[S.sessions.length-1];return !l?"A":(l.type==="A"?"B":"A")}
+function week(){if(!S.start)return 1;return Math.floor((new Date(today())-new Date(S.start))/6048e5)+1}
+function setsFor(ex){const w=week();if(w<=2)return Math.min(ex.s,2);if(w>=5&&ex.main)return 4;return ex.s}
+function last(id){for(let i=S.sessions.length-1;i>=0;i--){const e=S.sessions[i].ex[id];if(e&&e.some(x=>x>0))return e}return null}
+function begin(type){S.cur={date:today(),type:type,ex:{}};if(!S.start)S.start=today();save();render()}
+function setRep(id,i,v){const n=parseInt(v,10);S.cur.ex[id]=S.cur.ex[id]||[];S.cur.ex[id][i]=isNaN(n)?0:n;save();if(n>0)startT(REST);markDone(id,i,n>0)}
+function markDone(id,i,on){const el=document.getElementById("s_"+id+"_"+i);if(el)el.classList.toggle("done",on)}
+function finish(){const any=Object.values(S.cur.ex).some(a=>a.some(x=>x>0));if(!any){if(!confirm("Brak wpisanych serii. Anulować trening?"))return;S.cur=null}else{S.sessions.push(S.cur);S.cur=null}save();stopT();render()}
+function startT(sec){stopT();T={end:Date.now()+sec*1000};$("#timer").style.display="block";$("#timer").classList.remove("end");tick();T.iv=setInterval(tick,250)}
+function addT(s){if(T){T.end=Math.max(T.end,Date.now())+s*1000;$("#timer").classList.remove("end");T.beeped=false}}
+function stopT(){if(T&&T.iv)clearInterval(T.iv);T=null;$("#timer").style.display="none"}
+function tick(){if(!T)return;let r=Math.ceil((T.end-Date.now())/1000);if(r<=0){$("#tclock").textContent="0:00";$("#tlabel").textContent="Koniec przerwy, następna seria";$("#timer").classList.add("end");if(!T.beeped){T.beeped=true;beep();if(navigator.vibrate)navigator.vibrate([200,100,200])}if(r<-60)stopT();return}
+$("#tlabel").textContent="Przerwa";$("#tclock").textContent=Math.floor(r/60)+":"+String(r%60).padStart(2,"0")}
+let AC=null;function beep(){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=880;o.connect(g);g.connect(AC.destination);g.gain.setValueAtTime(.25,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+.6);o.start();o.stop(AC.currentTime+.6)}catch(e){}}
+function vToday(){
+ const w=week();
+ if(!S.cur){const t=nextType();const l=S.sessions[S.sessions.length-1];
+  const p=S.protein[today()];
+  return `<h1>Trening ${t}</h1><div class="mu">Tydzień ${w} planu${w<=2?" (po 2 serie)":w>=5?" (4 serie w głównych ćwiczeniach)":""}. ${l?"Ostatni: "+esc(l.type)+", "+esc(l.date):"To będzie pierwszy trening."}</div>
+  <div class="card">${PLAN[t].map(e=>`<div class="row sp" style="padding:6px 0"><div>${esc(e.n)}<div class="mu">${esc(e.eq)}</div></div><div class="tag">${setsFor(e)} x ${e.lo}-${e.hi}${e.unit||""}</div></div>`).join("")}</div>
+  <button class="pri" onclick="begin('${t}')">Zacznij trening ${t}</button>
+  <div style="height:8px"></div><button class="ghost" style="width:100%" onclick="begin('${t==="A"?"B":"A"}')">Zrób dziś trening ${t==="A"?"B":"A"}</button>
+  <div class="card"><div class="row sp"><h2>Białko dziś</h2><div class="tag">cel ${PROTEIN} g</div></div>
+  <div class="row" style="margin-top:10px"><input class="inp" id="prot" type="number" inputmode="numeric" placeholder="gramy" value="${p||""}"><button onclick="S.protein[today()]=parseInt($('#prot').value,10)||0;save();render()">Zapisz</button></div>
+  <div class="bar"><i style="width:${Math.min(100,Math.round((p||0)/PROTEIN*100))}%"></i></div></div>`}
+ const t=S.cur.type;
+ return `<div class="row sp"><h1>Trening ${t}</h1><span class="tag">tydzień ${w}</span></div><div class="mu">Seria kończy się z 1 powtórzeniem w zapasie. Po wpisaniu serii rusza przerwa ${REST} s.</div>`+
+ PLAN[t].map(e=>{const n=setsFor(e),l=last(e.id),c=S.cur.ex[e.id]||[];const lv=l?l.filter(x=>x>0):[];const top=lv.length>=2&&lv.every(x=>x>=e.hi);
+  let h=`<div class="card"><div class="row sp"><h2>${esc(e.n)}</h2>${top?'<span class="tag up">trudniej</span>':""}</div><div class="mu">${esc(e.eq)} · cel ${e.lo}-${e.hi}${e.unit?" "+e.unit:" powt."}</div><div class="sets">`;
+  for(let i=0;i<n;i++)h+=`<div class="set ${c[i]>0?"done":""}" id="s_${e.id}_${i}"><small>seria ${i+1}${l&&l[i]?" · ost. "+l[i]:""}</small><input type="number" inputmode="numeric" placeholder="${l&&l[i]?l[i]:e.lo}" value="${c[i]>0?c[i]:""}" onchange="setRep('${e.id}',${i},this.value)"></div>`;
+  h+=`</div>${top?`<div class="hint">Ostatnio górna granica we wszystkich seriach. Wariant trudniejszy: ${esc(e.up)}.</div>`:""}</div>`;return h}).join("")+
+ `<button class="pri" onclick="finish()">Zakończ trening</button>`}
+function vBody(){const b=S.body.slice().reverse();
+ return `<h1>Pomiary</h1><div class="mu">Raz w tygodniu, rano na czczo. Pas na wysokości pępka.</div>
+ <div class="card"><div class="g2"><input class="inp" id="bw" type="number" inputmode="decimal" step="0.1" placeholder="waga kg"><input class="inp" id="bp" type="number" inputmode="decimal" step="0.1" placeholder="pas cm"></div>
+ <div style="height:8px"></div><input class="inp" id="bf" type="number" inputmode="decimal" step="0.1" placeholder="tłuszcz % (Withings), opcjonalnie">
+ <div style="height:8px"></div><button class="pri" onclick="addBody()">Zapisz pomiar</button></div>
+ <div class="card">${b.length?`<table><tr><th>Data</th><th>Waga</th><th>Pas</th><th>Tłuszcz</th></tr>${b.map(x=>`<tr><td>${esc(x.date)}</td><td>${x.w||"-"}</td><td>${x.p||"-"}</td><td>${x.f?x.f+"%":"-"}</td></tr>`).join("")}</table>`:'<div class="mu">Brak pomiarów.</div>'}</div>`}
+function addBody(){const w=parseFloat($("#bw").value),p=parseFloat($("#bp").value),f=parseFloat($("#bf").value);if(!(w>0||p>0||f>0))return;S.body.push({date:today(),w:w||0,p:p||0,f:f||0});save();render()}
+function vHist(){const s=S.sessions.slice().reverse();
+ const names={};["A","B"].forEach(t=>PLAN[t].forEach(e=>names[e.id]=e.n));
+ return `<h1>Historia</h1><div class="mu">${S.sessions.length} treningów${S.start?", start "+esc(S.start):""}.</div>`+
+ (s.length?s.map(x=>`<div class="card"><div class="row sp"><h2>Trening ${esc(x.type)}</h2><span class="mu">${esc(x.date)}</span></div><table>${Object.keys(x.ex).map(id=>`<tr><td>${esc(names[id]||id)}</td><td style="text-align:right;white-space:nowrap">${x.ex[id].filter(v=>v>0).join(" · ")}</td></tr>`).join("")}</table></div>`).join(""):'<div class="card mu">Brak treningów.</div>')+
+ `<div class="card"><h2>Kopia danych</h2><div class="mu" style="margin:6px 0 10px">Dane są tylko w tym telefonie.</div><div class="g2"><button onclick="exp()">Eksport</button><button onclick="$('#imp').click()">Import</button></div><input id="imp" type="file" accept="application/json" style="display:none" onchange="imp(this)"></div>`}
+function exp(){const blob=new Blob([JSON.stringify(S,null,1)],{type:"application/json"}),f=new File([blob],"training_"+today()+".json",{type:"application/json"});
+ if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f]}).catch(()=>{})}else{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=f.name;a.click()}}
+function imp(el){const f=el.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.sessions))throw 0;if(confirm("Zastąpić dane w telefonie danymi z pliku ("+d.sessions.length+" treningów)?")){S=Object.assign({sessions:[],body:[],protein:{},cur:null,start:null},d);save();render()}}catch(e){alert("To nie jest plik kopii tej aplikacji.")}};r.readAsText(f)}
+function vPlan(){return `<h1>Plan</h1><div class="mu">Rekompozycja, plan z 18.11.2026.</div>
+ <div class="card"><h2>Tydzień</h2><div class="mu" style="margin-top:6px">Poniedziałek, środa, piątek. Tydzień 1: A-B-A, tydzień 2: B-A-B. Aplikacja sama podpowiada kolejny trening.</div></div>
+ <div class="card"><h2>Zasady</h2><div style="margin-top:6px;font-size:15px">
+ <p>Seria kończy się z 1 powtórzeniem w zapasie. Przerwa 90-120 s.</p>
+ <p>Górna granica powtórzeń we wszystkich seriach: następnym razem trudniejszy wariant (aplikacja pokaże znacznik „trudniej”).</p>
+ <p>Tygodnie 1-2: po 2 serie. Od 5. tygodnia: 4 serie w czterech głównych ćwiczeniach.</p>
+ <p>Białko co najmniej ${PROTEIN} g dziennie. Deficyt najwyżej 500 kcal. Kreatyna 5 g.</p></div></div>
+ ${["A","B"].map(t=>`<div class="card"><h2>Trening ${t}</h2>${PLAN[t].map(e=>`<div style="padding:7px 0;border-bottom:1px solid var(--line)">${esc(e.n)}<div class="mu">${e.s} x ${e.lo}-${e.hi}${e.unit||""} · ${esc(e.eq)}<br>Trudniej: ${esc(e.up)}</div></div>`).join("")}</div>`).join("")}`}
+function render(){$("#app").innerHTML=({today:vToday,body:vBody,hist:vHist,plan:vPlan})[view]();document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===view))}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{view=b.dataset.v;render();window.scrollTo(0,0)});
+if("serviceWorker" in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+render();
+</script>
+</body>
+</html>
